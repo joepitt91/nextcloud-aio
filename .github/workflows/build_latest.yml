@@ -17,6 +17,9 @@ jobs:
     outputs:
       build: ${{ steps.build_needed.outputs.needed }}
       base_image: ${{ steps.base_image.outputs.digest }}
+      nextcloud_major: ${{ steps.nextcloud_version.outputs.major }}
+      nextcloud_minor: ${{ steps.nextcloud_version.outputs.minor }}
+      nextcloud_patch: ${{ steps.nextcloud_version.outputs.patch }}
     steps:
       - uses: actions/checkout@v4
 
@@ -43,9 +46,22 @@ jobs:
           cd version_checker/
           python3 docker_image.py >>$GITHUB_OUTPUT
 
+      - id: nextcloud_version
+        name: Nextcloud Version
+        run: |
+          docker pull nextcloud:latest
+          PATCH=$(docker run --rm --entrypoint bash nextcloud:latest -c 'echo $NEXTCLOUD_VERSION')
+          MINOR=$(echo $PATCH | sed 's|\(.*\)\..*|\1|')
+          MAJOR=$(echo $MINOR | sed 's|\(.*\)\..*|\1|')
+          echo "major=$MAJOR" >>$GITHUB_OUTPUT
+          echo "minor=$MINOR" >>$GITHUB_OUTPUT
+          echo "patch=$PATCH" >>$GITHUB_OUTPUT
+
       - id: build_needed
         name: Check if a New Build is Required
         run: |
+          echo "Nextcloud Version: ${{ steps.nextcloud_version.outputs.patch }}"
+          echo "Base Image Digest: ${{ steps.base_image.outcome.digest }}"
           if [ "${{ steps.base_image.outputs.digest }}" == "${{ vars.BASE_IMAGE }}"  ]; then
             echo "needed=no" >>$GITHUB_OUTPUT
           else
@@ -81,7 +97,9 @@ jobs:
           sbom: true
           tags: |
             ghcr.io/joepitt91/nextcloud:latest
-            ghcr.io/joepitt91/nextcloud:run_${{ github.run_number }}
+            ghcr.io/joepitt91/nextcloud:${{ needs.versions.outputs.nextcloud_major }}
+            ghcr.io/joepitt91/nextcloud:${{ needs.versions.outputs.nextcloud_minor }}
+            ghcr.io/joepitt91/nextcloud:${{ needs.versions.outputs.nextcloud_patch }}
 
   save_versions:
     name: Save Versions
