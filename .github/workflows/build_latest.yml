@@ -61,7 +61,7 @@ jobs:
         name: Check if a New Build is Required
         run: |
           echo "Nextcloud Version: ${{ steps.nextcloud_version.outputs.patch }}"
-          echo "Base Image Digest: ${{ steps.base_image.outcome.digest }}"
+          echo "Base Image Digest: ${{ steps.base_image.outputs.digest }}"
           if [ "${{ steps.base_image.outputs.digest }}" == "${{ vars.BASE_IMAGE }}"  ]; then
             echo "needed=no" >>$GITHUB_OUTPUT
           else
