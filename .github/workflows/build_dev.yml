@@ -13,45 +13,44 @@ permissions:
   contents: read
   packages: write
 jobs:
-  versions:
-    name: Version Information
+  nextcloud:
+    name: Get Nextcloud Version Information
     runs-on: ubuntu-latest
     outputs:
-      base_image: ${{ steps.base_image.outputs.digest }}
+      digest: ${{ steps.digest.outputs.digest }}
+      tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Get Latest Nextcloud Version
+        id: version
+        uses: joepitt91/action-version-from-dockerhub@v1
+        with:
+          dockerhub_username: ${{ secrets.DOCKER_USER }}
+          dockerhub_token: ${{ secrets.DOCKER_PASSWORD }}
+          repository: nextcloud
+
+      - name: Get Current Digest for Identified Version
+        id: digest
+        uses: joepitt91/action-digest-from-dockerhub-image@v1
+        with:
+          dockerhub_username: ${{ secrets.DOCKER_USER }}
+          dockerhub_token: ${{ secrets.DOCKER_PASSWORD }}
+          repository: nextcloud
+          tag: ${{ steps.version.outputs.tag }}
+
+  build:
+    name: Build Image
+    runs-on: ubuntu-latest
+    needs:
+      - nextcloud
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.13
+      - name: Update Base Image References
+        run: sed -i 's/latest/${{ needs.nextcloud.outputs.tag }}/g' Dockerfile
 
-      - name: Install Dependencies
-        env:
-          PIP_ROOT_USER_ACTION: ignore
-        run: |
-          python3 -m pip install -q --upgrade pip
-          pip install -q -r version_checker/requirements.txt
-
-      - id: base_image
-        name: Get Base Image Digest
-        env:
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-          DOCKER_REPOSITORY: library/nextcloud
-          DOCKER_TAG: 'latest'
-          DOCKER_USER: ${{ secrets.DOCKER_USER }}  
-        run: |
-          cd version_checker/
-          python3 docker_image.py >>$GITHUB_OUTPUT
-
-  build:
-    name: Build Images
-    runs-on: ubuntu-latest
-    needs:
-      - versions
-    steps:
       - name: Image Information
-        run: echo "Building image of Nextcloud from nextcloud:latest with digest ${{ needs.versions.outputs.base_image }}"
+        run: echo "Building Nextcloud v${{ needs.nextcloud.outputs.version }} from digest ${{ needs.nextcloud.outputs.digest }}"
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
