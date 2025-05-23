@@ -11,72 +11,51 @@ permissions:
   contents: read
   packages: write
 jobs:
-  versions:
-    name: Version Information
+  nextcloud:
+    name: Get Nextcloud Version Information
     runs-on: ubuntu-latest
     outputs:
-      build: ${{ steps.build_needed.outputs.needed }}
-      base_image: ${{ steps.base_image.outputs.digest }}
-      nextcloud_major: ${{ steps.nextcloud_version.outputs.major }}
-      nextcloud_minor: ${{ steps.nextcloud_version.outputs.minor }}
-      nextcloud_patch: ${{ steps.nextcloud_version.outputs.patch }}
+      digest: ${{ steps.digest.outputs.digest }}
+      tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v5
+      - name: Get Latest Nextcloud Version
+        id: version
+        uses: joepitt91/action-version-from-dockerhub@v1
         with:
-          python-version: 3.13
+          dockerhub_username: ${{ secrets.DOCKER_USER }}
+          dockerhub_token: ${{ secrets.DOCKER_PASSWORD }}
+          repository: nextcloud
 
-      - name: Install Dependencies
-        env:
-          PIP_ROOT_USER_ACTION: ignore
-        run: |
-          python3 -m pip install -q --upgrade pip
-          pip install -q -r version_checker/requirements.txt
-
-      - id: base_image
-        name: Get Base Image Digest
-        env:
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-          DOCKER_REPOSITORY: library/nextcloud
-          DOCKER_TAG: 'latest'
-          DOCKER_USER: ${{ secrets.DOCKER_USER }}  
-        run: |
-          cd version_checker/
-          python3 docker_image.py >>$GITHUB_OUTPUT
-
-      - id: nextcloud_version
-        name: Nextcloud Version
-        run: |
-          docker pull nextcloud:latest
-          PATCH=$(docker run --rm --entrypoint bash nextcloud:latest -c 'echo $NEXTCLOUD_VERSION')
-          MINOR=$(echo $PATCH | sed 's|\(.*\)\..*|\1|')
-          MAJOR=$(echo $MINOR | sed 's|\(.*\)\..*|\1|')
-          echo "major=$MAJOR" >>$GITHUB_OUTPUT
-          echo "minor=$MINOR" >>$GITHUB_OUTPUT
-          echo "patch=$PATCH" >>$GITHUB_OUTPUT
-
-      - id: build_needed
-        name: Check if a New Build is Required
-        run: |
-          echo "Nextcloud Version: ${{ steps.nextcloud_version.outputs.patch }}"
-          echo "Base Image Digest: ${{ steps.base_image.outputs.digest }}"
-          if [ "${{ steps.base_image.outputs.digest }}" == "${{ vars.BASE_IMAGE }}"  ]; then
-            echo "needed=no" >>$GITHUB_OUTPUT
-          else
-            echo "needed=yes" >>$GITHUB_OUTPUT
-          fi
+      - name: Get Current Digest for Identified Version
+        id: digest
+        uses: joepitt91/action-digest-from-dockerhub-image@v1
+        with:
+          dockerhub_username: ${{ secrets.DOCKER_USER }}
+          dockerhub_token: ${{ secrets.DOCKER_PASSWORD }}
+          repository: nextcloud
+          tag: ${{ steps.version.outputs.tag }}
 
   build:
     name: Build Images
-    if: needs.versions.outputs.build == 'yes' || github.event_name == 'workflow_dispatch'
+    if: needs.nextcloud.outputs.digest != vars.BASE_IMAGE || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     needs:
-      - versions
+      - nextcloud
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Update Base Image References
+        run: sed -i 's/latest/${{ needs.nextcloud.outputs.tag }}/g' Dockerfile
+
+      - name: Convert Version to Tags
+        id: image_tags
+        uses: joepitt91/action-version-to-tags@v1
+        with:
+          version: ${{ needs.nextcloud.outputs.version }}
+
       - name: Image Information
-        run: echo "Building image of Nextcloud from nextcloud:latest with digest ${{ needs.versions.outputs.base_image }}"
+        run: echo "Building Nextcloud v${{ needs.nextcloud.outputs.version }} from digest ${{ needs.nextcloud.outputs.digest }}"
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -91,21 +70,23 @@ jobs:
       - name: Build and Push Image
         uses: docker/build-push-action@v6
         with:
+          context: .
+          platforms: linux/amd64
           provenance: true
           pull: true
           push: true
           sbom: true
           tags: |
             ghcr.io/joepitt91/nextcloud:latest
-            ghcr.io/joepitt91/nextcloud:${{ needs.versions.outputs.nextcloud_major }}
-            ghcr.io/joepitt91/nextcloud:${{ needs.versions.outputs.nextcloud_minor }}
-            ghcr.io/joepitt91/nextcloud:${{ needs.versions.outputs.nextcloud_patch }}
+            ghcr.io/joepitt91/nextcloud:${{ steps.image_tags.outputs.major_tag }}
+            ghcr.io/joepitt91/nextcloud:${{ steps.image_tags.outputs.minor_tag }}
+            ghcr.io/joepitt91/nextcloud:${{ steps.image_tags.outputs.patch_tag }}
 
   save_versions:
     name: Save Versions
     needs: 
       - build
-      - versions
+      - nextcloud
     runs-on: ubuntu-latest
     steps:
       - name: Update BASE_IMAGE
@@ -114,4 +95,4 @@ jobs:
           name: BASE_IMAGE
           repository: ${{ github.repository }}
           token: ${{ secrets.REPO_ACCESS_TOKEN }}
-          value: ${{ needs.versions.outputs.base_image }}
+          value: ${{ needs.nextcloud.outputs.digest }}
