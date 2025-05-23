@@ -65,6 +65,7 @@ jobs:
       - name: Build and Push Image
         uses: docker/build-push-action@v6
         with:
+          context: .
           provenance: true
           pull: true
           push: true
