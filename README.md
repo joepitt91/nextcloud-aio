@@ -6,4 +6,11 @@ SPDX-License-Identifier: GPL-3.0-only
 
 # Nextcloud AIO
 
-Nextcloud AIO with additional dependencies installed.
+[Nextcloud AIO](https://github.com/nextcloud/docker) with additional dependencies installed.
+
+Additional APT packages added are:
+
+* ffmpeg
+* libreoffice
+* nodejs
+* npm
