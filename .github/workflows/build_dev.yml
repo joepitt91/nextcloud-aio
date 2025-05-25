@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-only
 
-name: Build Development Images
+name: Build Development Image
 on:
   push:
     branches: 
@@ -14,7 +14,7 @@ permissions:
   packages: write
 jobs:
   nextcloud:
-    name: Get Nextcloud Version Information
+    name: Get Version Information
     runs-on: ubuntu-latest
     outputs:
       digest: ${{ steps.digest.outputs.digest }}
@@ -44,13 +44,8 @@ jobs:
     needs:
       - nextcloud
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Update Base Image References
-        run: sed -i 's/latest/${{ needs.nextcloud.outputs.tag }}/g' Dockerfile
-
       - name: Image Information
-        run: echo "Building Nextcloud v${{ needs.nextcloud.outputs.version }} from digest ${{ needs.nextcloud.outputs.digest }}"
+        run: echo "Building image of Nextcloud ${{ needs.nextcloud.outputs.version }} from image with digest ${{ needs.nextcloud.outputs.digest }}"
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -65,11 +60,11 @@ jobs:
       - name: Build and Push Image
         uses: docker/build-push-action@v6
         with:
-          context: .
-          platforms: linux/amd64
+          build-args: |
+            NEXTCLOUD_VERSION=${{ needs.nextcloud.outputs.tag }}
           provenance: true
           pull: true
           push: true
           sbom: true
           tags: |
-            ghcr.io/joepitt91/nextcloud:${{ github.event_name }}_${{ github.sha }}
+            ghcr.io/joepitt91/nextcloud-dev:${{ github.event_name }}_${{ github.sha }}
