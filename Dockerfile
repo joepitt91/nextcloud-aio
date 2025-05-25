@@ -5,7 +5,7 @@ ARG NEXTCLOUD_VERSION=latest
 FROM docker.io/library/nextcloud:${NEXTCLOUD_VERSION}
 LABEL org.opencontainers.image.authors="joepitt91 via https://github.com/joepitt91/nextcloud-aio/issues"
 LABEL org.opencontainers.image.base.name=docker.io/library/nextcloud:${NEXTCLOUD_VERSION}
-LABEL org.opencontainers.image.description="Nextcloud is an open-source self-hosted platform for file hosting, syncing, and collaboration."
+LABEL org.opencontainers.image.description="A safe home for all your data. Access & share your files, calendars, contacts, mail & more from any device, on your terms."
 LABEL org.opencontainers.image.documentation=https://github.com/joepitt91/nextcloud-aio
 LABEL org.opencontainers.image.licenses=GPL-3.0-only
 LABEL org.opencontainers.image.source=https://github.com/joepitt91/nextcloud-aio
