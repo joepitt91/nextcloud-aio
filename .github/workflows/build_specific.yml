@@ -4,8 +4,6 @@
 
 name: Build Specific Version Image
 on:
-  schedule:
-    - cron: 35 * * * *
   workflow_dispatch:
     inputs:
       version:
