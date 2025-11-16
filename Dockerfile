@@ -16,4 +16,4 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get -yq update && \
     apt-get -yq install ffmpeg libreoffice nodejs npm && \
     apt-get -yq clean
-HEALTHCHECK CMD [ "CMD", "/bin/sh", "-c", "curl -f http://localhost/index.php || exit 1" ]
+HEALTHCHECK CMD curl -f http://localhost/index.php || exit 1
