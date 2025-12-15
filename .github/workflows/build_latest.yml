@@ -24,7 +24,7 @@ jobs:
     steps:
       - name: Get Latest Nextcloud Version
         id: version
-        uses: joepitt91/action-version-from-dockerhub@v1
+        uses: joepitt91/action-version-from-dockerhub@v2
         with:
           dockerhub_username: ${{ secrets.DOCKER_USER }}
           dockerhub_token: ${{ secrets.DOCKER_PASSWORD }}
