@@ -14,6 +14,6 @@ LABEL org.opencontainers.image.url=https://github.com/joepitt91/nextcloud-aio
 LABEL org.opencontainers.image.version=${NEXTCLOUD_VERSION}
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get -yq update && \
-    apt-get -yq install ffmpeg libreoffice nodejs npm && \
+    apt-get -yq install ffmpeg ghostscript libreoffice nodejs npm && \
     apt-get -yq clean
 HEALTHCHECK CMD curl -f http://localhost/index.php || exit 1
