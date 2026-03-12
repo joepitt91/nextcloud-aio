@@ -59,7 +59,7 @@ jobs:
         run: echo "Building image of Nextcloud ${{ needs.nextcloud.outputs.version }} from image with digest ${{ needs.nextcloud.outputs.digest }}"
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
